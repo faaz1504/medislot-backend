@@ -13,10 +13,14 @@ const departmentRoutes = require("./routes/departmentRoutes");
 
 const doctorRoutes = require("./routes/doctorRoutes");
 
+const scheduleRoutes = require("./routes/scheduleRoutes");
+
 app.use("/api/v1/user",userRoutes);
 
 app.use("/api/v1/department",departmentRoutes);
 
 app.use("/api/v1/doctor",doctorRoutes);
+
+app.use("/api/v1/schedule",scheduleRoutes);
 
 module.exports = app;

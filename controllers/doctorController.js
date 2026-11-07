@@ -184,6 +184,36 @@ exports.viewDoctorById = async (req,res) =>{
 
 };
 
+exports.viewDoctorsAdmin = async (req,res) =>{
+
+    try {
+        
+        const doctors = await Doctor.find()
+                .populate("user", "name email status role")
+                .populate("department", "name status");
+
+        if(!doctors){
+            return res.status(404).json({
+                success:false,
+                message:"doctor not found"
+            });
+        }
+        
+        res.status(200).json({
+            success:true,
+            count:doctors.length,
+            doctors
+        })
+
+    } catch (error) {
+        res.status(400).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+};
+
 exports.updateDoctor = async (req,res) =>{
     
     try {
@@ -264,3 +294,106 @@ exports.updateDoctor = async (req,res) =>{
     }
     
 };
+
+exports.updateDoctorStatus = async(req,res) =>{
+
+    try {
+        
+        const {id} = req.params;
+
+        if(!id){
+            return res.status(400).json({
+                success:false,
+                message:"missing doctor ID"
+            });
+        }
+
+        const doctor = await Doctor.findById(id);
+
+        if(!doctor){
+             return res.status(404).json({
+                success:false,
+                message:"doctor not found"
+            });
+        }
+
+        doctor.status = !doctor.status;
+
+        await doctor.save();
+
+        res.status(200).json({
+            success:true,
+            message:doctor.status
+                    ? "doctor activated successfully"
+                    : "doctor deactivated successfully",
+            doctor
+
+        });
+
+    } catch (error) {
+        res.status(400).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+};
+
+exports.viewDoctorByDepartment = async (req,res) =>{
+
+    try {
+        
+        const {id} = req.params;
+
+        if(!id){
+            return res.status(400).json({
+                success:false,
+                message:"missing doctor ID"
+            });
+        }
+
+        const department = await Department.findById(id);
+
+        if(!department){
+            return res.status(400).json({
+                success:false,
+                message:"Department not found"
+            });
+        }
+
+        if(department.status === false){
+            return res.status(400).json({
+                success:false,
+                message:"Department is inactive"
+            });
+        }
+
+        const doctors = await Doctor.find({
+            department:id,
+            status:true
+        })
+        
+        .populate("user", "name email status role")
+        .populate("department", "name")
+
+        const activeDoctors = doctors.filter((doctor) =>{
+            return doctor.user &&
+                   doctor.user.status === true &&
+                   doctor.user.role === "doctor";
+        });
+
+        res.status(200).json({
+            success:true,
+            count:activeDoctors.length,
+            doctors:activeDoctors
+        })
+
+
+    } catch (error) {
+        res.status(400).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
