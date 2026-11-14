@@ -101,10 +101,15 @@ exports.viewDoctorSchedule = async(req,res) =>{
         }
 
         const doctor = await Doctor.findById(id)
-                                   .populate("user", "name")
-                                   .populate("department", "name");
+                                   .populate("user", "name email status role")
+                                   .populate("department", "name status");
 
-         if(!doctor){
+          if (!doctor || doctor.status !== true ||
+            !doctor.user ||
+            doctor.user.status !== true ||
+            doctor.user.role !== "doctor" ||
+            !doctor.department ||
+            doctor.department.status !== true) {
              return res.status(404).json({
                 success:false,
                 message:"doctor not found"
@@ -113,6 +118,7 @@ exports.viewDoctorSchedule = async(req,res) =>{
 
         const schedules = await Schedule.find({
             doctor:id
+            
 
         });
 
@@ -224,4 +230,84 @@ exports.updateSchedule = async(req,res) =>{
 
 }
 
+exports.viewAllScheduleAdmin = async(req,res)=>{
 
+    try {
+        
+        const schedules = await Schedule.find()
+                .populate({
+                    path:"doctor",
+                    select:"user department specialization qualification status",
+                    
+                    populate:[
+                        {
+                            path:"user",
+                            select:"name email"
+                        },
+                        {
+                            path:"department",
+                            select:"name"
+                        }
+                    ]
+                })
+
+                res.status(200).json({
+                    success:true,
+                    count:schedules.length,
+                    schedules
+                })
+
+
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
+
+exports.updateScheduleStatus = async(req,res) => {
+
+    try {
+        
+        const {id} = req.params;
+
+        if(!id){
+            return res.status(400).json({
+                success:false,
+                message:"schedule ID is missing"
+            });
+        }
+
+        const schedule = await Schedule.findById(id);
+
+        if(!schedule){
+            return res.status(404).json({
+                success:false,
+                message:"schedule not found"
+            }); 
+        }
+
+        schedule.isAvailable = !schedule.isAvailable;
+
+        await schedule.save();
+
+        res.status(200).json({
+                    success:true,
+                    message:schedule.isAvailable
+                        ? "schedule activated successfully"
+                        : "schedule deactivated successfully",
+                    schedule
+                    
+                })
+
+
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
