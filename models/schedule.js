@@ -11,13 +11,13 @@ const scheduleSchema = new mongoose.Schema({
     dayOfWeek:{
         type:String,
         enum:[
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday"
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
         ],
 
         required:true

@@ -15,6 +15,8 @@ const doctorRoutes = require("./routes/doctorRoutes");
 
 const scheduleRoutes = require("./routes/scheduleRoutes");
 
+const appointmentRoutes = require("./routes/appointmentRoutes");
+
 app.use("/api/v1/user",userRoutes);
 
 app.use("/api/v1/department",departmentRoutes);
@@ -22,5 +24,7 @@ app.use("/api/v1/department",departmentRoutes);
 app.use("/api/v1/doctor",doctorRoutes);
 
 app.use("/api/v1/schedule",scheduleRoutes);
+
+app.use("/api/v1/appointment",appointmentRoutes);
 
 module.exports = app;

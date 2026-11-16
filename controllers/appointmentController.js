@@ -4,7 +4,9 @@ const Doctor = require("../models/doctor");
 const Schedule = require("../models/schedule");
 const User = require("../models/user");
 
-exports.createAppointment = async (req,res) =>{
+
+
+exports.bookAppointment = async (req,res) =>{
 
     try {
         
@@ -42,12 +44,39 @@ exports.createAppointment = async (req,res) =>{
         }
 
         // check doctor's user account----->
-        const doctorUser = await Doctor.findById(doctorDetails.user);
+        
+        const userId = doctorDetails.user.toString();
 
-        if(!doctorUser || doctorUser.role !== "doctor" || doctorUser.status === false){
-             return res.status(400).json({
-                success:false,
-                message:"Doctor account is inactive"
+        const doctorUser = await User.findById(userId)
+            .select("_id name email role status");
+
+
+
+        // if(!doctorUser || doctorUser.role !== "doctor" || doctorUser.status === false){
+        //      return res.status(400).json({
+        //         success:false,
+        //         message:"Doctor account is inactive"
+        //     });
+        // }
+
+        if (!doctorUser) {
+            return res.status(404).json({
+                success: false,
+                message: "Doctor user account not found"
+            });
+        }
+
+        if (doctorUser.role !== "doctor") {
+            return res.status(400).json({
+                success: false,
+                message: "User role is not doctor"
+            });
+        }
+
+        if (doctorUser.status === false) {
+            return res.status(400).json({
+                success: false,
+                message: "Doctor user account is inactive"
             });
         }
 
@@ -216,6 +245,23 @@ exports.createAppointment = async (req,res) =>{
 
         await appointment.save();
 
+            await appointment.populate({
+    path: "doctor",
+    select: "user department specialization qualification consultationFee",
+    populate: [
+        {
+            path: "user",
+            select: "name email"
+        },
+        {
+            path: "department",
+            select: "name"
+        }
+    ]
+});
+
+await appointment.populate("schedule");
+
         res.status(200).json({
             success:true,
             message:"Appointment booked successfully",
@@ -228,6 +274,306 @@ exports.createAppointment = async (req,res) =>{
             success:false,
             message:error.message
         });  
+    }
+
+}
+
+exports.viewAllAppointmentsAdmin = async (req,res)=>{
+
+    try {
+        
+        const appointment = await Appointment.find()
+            .populate("patient", "name email phone")
+            .populate({
+                path:"doctor",
+                select:"user department specialization qualification",
+
+                populate:[
+                    {
+                        path:"user",
+                        select:"name email"
+                    },
+                    {
+                        path:"department",
+                        select:"name"
+                    }
+                ]
+            })
+
+            .populate("schedule", "dayOfWeek sessions")
+            .sort({appointmentDate: -1})
+
+            res.status(200).json({
+                success:true,
+                count:appointment.length,
+                appointment
+            })
+
+    } catch (error) {
+         res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
+
+exports.viewPatientAppointment = async (req,res)=>{
+
+    try {
+        
+        const patient = req.userId;
+
+        if(!patient){
+            return res.status(401).json({
+                success: false,
+                message: "Patient authentication required"
+            });
+        }
+
+        const appointment = await Appointment.find(
+            {
+                patient:patient
+            }
+        )
+
+        .populate({
+            path:"doctor",
+            select:"user department specialization qualification consultationFee",
+            populate:[
+                {
+                    path:"user",
+                    select:"name email"
+                },
+
+                {
+                    path:"department",
+                    select:"name"
+                }
+            ]
+        })
+        .populate("schedule", "dayOfWeek sessions")
+        .sort({appointmentDate: -1});
+
+        res.status(200).json({
+            success:true,
+            count:appointment.length,
+            appointment
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
+
+exports.viewDoctorAppointments = async (req,res)=>{
+
+    try {
+        
+        const userId = req.userId;
+
+        if(!userId){
+            return res.status(401).json({
+                success: false,
+                message: "authentication required"
+            });
+        }
+
+        const doctor = await Doctor.findOne({
+            user:userId
+        })
+
+        
+
+        if(!doctor){
+            return res.status(401).json({
+                success: false,
+                message: "Doctor profile not found"
+            });
+        }
+
+        console.log("Logged-in User ID:", userId);
+console.log("Logged-in Doctor ID:", doctor._id);
+         
+
+        const appointments = await Appointment.find({
+                doctor:doctor._id
+            })
+
+            
+
+        .populate("patient", "name email phone")
+        .populate("schedule", "dayOfWeek sessions")
+        .sort({
+            appointmentDate: 1,
+            startingTime: 1
+        });
+        console.log("Matched Appointments:", appointments);
+
+        res.status(200).json({
+            success:true,
+            count:appointments.length,
+            appointments    
+        })
+
+    } catch (error) {
+         console.log("Controller Error:", error);
+
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
+
+exports.viewAppointmentById = async (req,res)=>{
+
+    try {
+        
+        const {id} = req.params;
+
+        if(!id){
+            return res.status(401).json({
+                success: false,
+                message: "Appointment ID is missing"
+            });
+        }
+
+        const appointment = await Appointment.findById(id)
+
+        .populate("patient", "name email phone")
+
+        .populate({
+            path:"doctor",
+            select:"user department specialization qualification consultationFee",
+            populate:[
+                {
+                    path:"user",
+                    select:"name email"
+                },
+
+                {
+                    path:"department",
+                    select:"name"
+                }
+            ]
+        })
+        .populate("schedule", "dayOfWeek sessions")
+
+        if(!appointment){
+            return res.status(401).json({
+                success: false,
+                message: "Appointment not found"
+            });
+        }
+        
+
+        res.status(200).json({
+            success:true,
+             message: "Appointment retrieved successfully",
+            appointment
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+
+}
+
+exports.cancelAppointment = async (req,res) =>{
+
+    try {
+        
+        const {id} = req.params;
+        const userId = req.userId;
+        const userRole = req.userRole;
+
+        if(!id){
+            return res.status(401).json({
+                success: false,
+                message: "Appointment ID is missing"
+            });
+        }
+
+        const appointment = await Appointment.findById(id);
+
+        if(!appointment){
+            return res.status(401).json({
+                success: false,
+                message: "Appointment not found"
+            });
+        }
+
+        if(
+            userRole === "patient" && appointment.patient.toString() !== userId.toString()
+        ){
+            return res.status(403).json({
+                success: false,
+                message: "You cannot cancel another patient's appointment"
+            });
+        }
+
+        //check status of the appointment
+        if(
+            appointment.status === "cancelled" || 
+            appointment.status === "completed" 
+        ){
+             return res.status(400).json({
+                success: false,
+                message: "this appointment cannot be cancelled"
+            });
+        }
+
+        appointment.status = "cancelled";
+
+        await appointment.save();
+
+        res.status(200).json({
+            success:true,
+             message: "Appointment cancelled successfully",
+            appointment
+        })
+
+
+    } catch (error) {
+         res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+
+}
+
+rescheduleAppointment = async (req,res)=>{
+
+    try {
+        
+        const {id} = req.params;
+        const userId = req.userId;
+        const userRole = req.userRole;
+
+        const {schedule ,appointmentDate, startingTime} = req.body;
+
+        if(!id || !schedule || !appointmentDate || !startingTime){
+            return res.status(400).json({
+                success: false,
+                message: "Please provide all required details"
+            });
+        }
+
+        
+
+    } catch (error) {
+        
     }
 
 }

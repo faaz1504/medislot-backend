@@ -118,8 +118,25 @@ exports.viewDoctorSchedule = async(req,res) =>{
 
         const schedules = await Schedule.find({
             doctor:id
+
+            
             
 
+        });
+
+        const dayOrder = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+        ];
+
+        schedules.sort((a,b)=>{
+            return dayOrder.indexOf(a.dayOfWeek) - 
+                   dayOrder.indexOf(b.dayOfWeek)  
         });
 
         res.status(200).json({
@@ -249,7 +266,23 @@ exports.viewAllScheduleAdmin = async(req,res)=>{
                             select:"name"
                         }
                     ]
-                })
+                });
+                
+                const dayOrder = [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday"
+                ];
+
+                schedules.sort((a,b)=>{
+                    return dayOrder.indexOf(a.dayOfWeek) - 
+                        dayOrder.indexOf(b.dayOfWeek)  
+                });
+
 
                 res.status(200).json({
                     success:true,
